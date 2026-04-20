@@ -90,3 +90,22 @@ LIMIT $3;
 - EF Core `AppDbContext` で `users/words/scores` をマッピング
 - `EfWordStore` と `EfScoreStore` が RDB を使用
 - `Database:Provider` で `Sqlite` / `Postgres` を切替
+
+## 6. 接続設定（PostgreSQL）
+
+### appsettings 方式
+- `Database:Provider = Postgres`
+- `ConnectionStrings:Postgres = Host=...;Port=5432;Database=...;Username=...;Password=...;Ssl Mode=Require;Trust Server Certificate=false`
+
+### 環境変数方式
+`ConnectionStrings:Postgres` を設定しない場合は、以下で組み立て可能です。
+
+- `DB_HOST`
+- `DB_PORT`（省略時 5432）
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_SSLMODE`（省略時 Require）
+- `DB_TRUST_SERVER_CERT`（省略時 false）
+
+本番では Secrets Manager でパスワード管理し、アプリ側は環境変数経由で受け取る運用を推奨します。
