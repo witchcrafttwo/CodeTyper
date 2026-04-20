@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CodeTyper MVP</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>CodeTyper MVP</h1>
+
+    <section class="card">
+      <h2>ユーザー設定</h2>
+      <div class="grid">
+        <label>User ID <input id="userId" value="demo-user" /></label>
+        <label>表示名 <input id="displayName" value="demo" /></label>
+        <label>Team ID <input id="teamId" value="team-a" /></label>
+        <label>グローバル表示名 <input id="globalAlias" value="DemoUser" /></label>
+      </div>
+      <button id="saveUser">ユーザー保存</button>
+    </section>
+
+    <section class="card">
+      <h2>モード</h2>
+      <div class="grid">
+        <label>言語 <select id="language"></select></label>
+        <label>難易度 <select id="difficulty"></select></label>
+        <label>ランキング範囲
+          <select id="scope">
+            <option value="team">team</option>
+            <option value="global">global</option>
+          </select>
+        </label>
+      </div>
+      <button id="start">練習開始</button>
+    </section>
+
+    <section class="card">
+      <h2>練習</h2>
+      <p id="targetText">ここに単語列が表示されます。</p>
+      <textarea id="inputText" rows="5" placeholder="ここにタイピング"></textarea>
+      <div class="row">
+        <button id="finish">結果送信</button>
+        <span id="result"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>ランキング</h2>
+      <button id="loadRanking">更新</button>
+      <ol id="ranking"></ol>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+@base = http://localhost:5000
+
+### Health
+GET {{base}}/health
+
+### Modes
+GET {{base}}/modes
+
+### Upsert user
+POST {{base}}/users/upsert
+Content-Type: application/json
+
+{
+  "userId": "user-001",
+  "email": "user-001@example.com",
+  "displayName": "Taro",
+  "teamId": "team-a",
+  "globalAlias": "TARO_01"
+}
+
+### Words
+GET {{base}}/words?language=java&difficulty=easy&count=15
+
+### Save score (team)
+POST {{base}}/scores
+Content-Type: application/json
+
+{
+  "userId": "user-001",
+  "displayName": "Taro",
+  "teamId": "team-a",
+  "scope": "team",
+  "language": "java",
+  "difficulty": "easy",
+  "correctChars": 220,
+  "wpm": 65,
+  "accuracy": 96.5,
+  "missCount": 3
+}
+
+### Team ranking
+GET {{base}}/rankings?scope=team&language=java&difficulty=easy&teamId=team-a&top=10
