@@ -65,3 +65,7 @@ dotnet run --project src/CodeTyper.Api
 
 ## 実装の進め方
 - 実装ロードマップ: `docs/implementation-roadmap-ja.md`
+
+
+## Visual Studio で起動できない時
+- `docs/visual-studio-troubleshooting-ja.md` を確認してください。
