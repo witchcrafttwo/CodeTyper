@@ -4,8 +4,10 @@ C# で作る「コード頻出単語」向けタイピングアプリの API 実
 
 ## 含まれるもの
 - ASP.NET Core Minimal API
+- **簡易Web GUI（`/`）**
 - モード選択（java/python/javascript + easy/normal/hard）
 - 単語取得 API
+- ユーザー登録/更新 API
 - スコア登録 API
 - チーム / グローバルランキング API
 - **RDB (EF Core)** 保存実装（SQLite / PostgreSQL）
@@ -14,6 +16,10 @@ C# で作る「コード頻出単語」向けタイピングアプリの API 実
 ```bash
 dotnet run --project src/CodeTyper.Api
 ```
+
+起動後:
+- API: `http://localhost:5000`
+- GUI: `http://localhost:5000/`
 
 ## PostgreSQL 接続設定（RDS PostgreSQL）
 
@@ -42,15 +48,13 @@ dotnet run --project src/CodeTyper.Api
 
 サンプル: `.env.postgres.example`
 
-## DB 設定
-- `Database:Provider = Sqlite`（ローカル開発向け）
-- `Database:Provider = Postgres`（AWS RDS PostgreSQL 向け）
-
-起動時に `EnsureCreated()` でテーブルを自動作成し、初期単語をシードします。
-
 ## 主要 API
+- `GET /health`
 - `GET /modes`
 - `GET /words?language=java&difficulty=easy&count=20`
+- `POST /users/upsert`
+- `GET /users/{userId}`
+- `PATCH /users/{userId}/alias`
 - `POST /scores`
 - `GET /rankings?scope=team&language=java&difficulty=easy&teamId=team-a&top=20`
 
@@ -58,3 +62,6 @@ dotnet run --project src/CodeTyper.Api
 
 ## DB選定（AWS）
 - 採用: **RDS PostgreSQL**（詳細は `docs/aws-rdb-choice-ja.md`）
+
+## 実装の進め方
+- 実装ロードマップ: `docs/implementation-roadmap-ja.md`

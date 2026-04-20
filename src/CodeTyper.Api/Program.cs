@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using CodeTyper.Api.Data;
 using CodeTyper.Api.Models;
 using CodeTyper.Api.Services;
@@ -21,6 +22,7 @@ else
 builder.Services.AddSingleton<IModeCatalog, StaticModeCatalog>();
 builder.Services.AddScoped<IWordStore, EfWordStore>();
 builder.Services.AddScoped<IScoreStore, EfScoreStore>();
+builder.Services.AddScoped<IUserStore, EfUserStore>();
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -33,6 +35,9 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(db);
 }
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/modes", (IModeCatalog modes) => Results.Ok(modes.GetAll()));
@@ -43,6 +48,40 @@ app.MapGet(
     {
         var result = await words.GetWordsAsync(language, difficulty, count ?? 20);
         return Results.Ok(result);
+    });
+
+app.MapGet(
+    "/users/{userId}",
+    async (string userId, IUserStore users) =>
+    {
+        var user = await users.GetByIdAsync(userId);
+        return user is null ? Results.NotFound() : Results.Ok(user);
+    });
+
+app.MapPost(
+    "/users/upsert",
+    async (UserUpsertRequest request, IUserStore users) =>
+    {
+        if (string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.DisplayName))
+        {
+            return Results.BadRequest("userId and displayName are required");
+        }
+
+        var result = await users.UpsertAsync(request);
+        return Results.Ok(result);
+    });
+
+app.MapPatch(
+    "/users/{userId}/alias",
+    async (string userId, AliasUpdateRequest request, IUserStore users) =>
+    {
+        if (string.IsNullOrWhiteSpace(request.GlobalAlias) || !Regex.IsMatch(request.GlobalAlias, "^[A-Za-z0-9_]{3,20}$"))
+        {
+            return Results.BadRequest("globalAlias must match ^[A-Za-z0-9_]{3,20}$");
+        }
+
+        var result = await users.UpdateAliasAsync(userId, request.GlobalAlias);
+        return result is null ? Results.NotFound() : Results.Ok(result);
     });
 
 app.MapPost(
@@ -57,6 +96,12 @@ app.MapPost(
         if (string.IsNullOrWhiteSpace(submission.Language) || string.IsNullOrWhiteSpace(submission.Difficulty))
         {
             return Results.BadRequest("language and difficulty are required");
+        }
+
+        if (!submission.Scope.Equals("team", StringComparison.OrdinalIgnoreCase) &&
+            !submission.Scope.Equals("global", StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.BadRequest("scope must be team or global");
         }
 
         var calculated = ScoreCalculator.Calculate(
@@ -131,3 +176,5 @@ static string ResolvePostgresConnectionString(IConfiguration config)
 
     return csb.ConnectionString;
 }
+
+public sealed record AliasUpdateRequest(string GlobalAlias);

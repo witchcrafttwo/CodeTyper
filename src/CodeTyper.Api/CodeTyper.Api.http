@@ -6,6 +6,18 @@ GET {{base}}/health
 ### Modes
 GET {{base}}/modes
 
+### Upsert user
+POST {{base}}/users/upsert
+Content-Type: application/json
+
+{
+  "userId": "user-001",
+  "email": "user-001@example.com",
+  "displayName": "Taro",
+  "teamId": "team-a",
+  "globalAlias": "TARO_01"
+}
+
 ### Words
 GET {{base}}/words?language=java&difficulty=easy&count=15
 
