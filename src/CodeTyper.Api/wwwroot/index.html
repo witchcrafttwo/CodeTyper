@@ -3,55 +3,164 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CodeTyper MVP</title>
+  <title>CodeTyper</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-inner">
+      <span class="logo">⌨️ CodeTyper</span>
+      <div id="authArea" class="auth-area">
+        <button id="loginBtn" class="btn btn-google" onclick="loginWithGoogle()">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Googleでログイン
+        </button>
+        <div id="userInfo" class="user-info hidden">
+          <img id="userAvatar" src="" alt="avatar" class="avatar" />
+          <span id="userName"></span>
+          <button class="btn btn-sm" onclick="logout()">ログアウト</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- タブナビ -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="practice">🎯 練習</button>
+    <button class="tab-btn" data-tab="ranking">🏆 ランキング</button>
+    <button class="tab-btn" data-tab="admin">⚙️ 単語管理</button>
+  </nav>
+
   <main class="container">
-    <h1>CodeTyper MVP</h1>
 
-    <section class="card">
-      <h2>ユーザー設定</h2>
-      <div class="grid">
-        <label>User ID <input id="userId" value="demo-user" /></label>
-        <label>表示名 <input id="displayName" value="demo" /></label>
-        <label>Team ID <input id="teamId" value="team-a" /></label>
-        <label>グローバル表示名 <input id="globalAlias" value="DemoUser" /></label>
-      </div>
-      <button id="saveUser">ユーザー保存</button>
-    </section>
+    <!-- ===== 練習タブ ===== -->
+    <div id="tab-practice" class="tab-content active">
 
-    <section class="card">
-      <h2>モード</h2>
-      <div class="grid">
-        <label>言語 <select id="language"></select></label>
-        <label>難易度 <select id="difficulty"></select></label>
-        <label>ランキング範囲
-          <select id="scope">
-            <option value="team">team</option>
-            <option value="global">global</option>
-          </select>
-        </label>
-      </div>
-      <button id="start">練習開始</button>
-    </section>
+      <!-- モード選択 -->
+      <section class="card mode-card">
+        <h2>モード選択</h2>
+        <div class="mode-grid" id="modeGrid"></div>
+        <div class="mode-options">
+          <label>ランキング範囲
+            <select id="scope">
+              <option value="global">🌍 グローバル</option>
+              <option value="team">👥 チーム</option>
+            </select>
+          </label>
+          <label id="teamIdLabel" class="hidden">チームID
+            <input id="teamId" placeholder="team-a" />
+          </label>
+          <label>単語数
+            <select id="wordCount">
+              <option value="10">10語</option>
+              <option value="20" selected>20語</option>
+              <option value="30">30語</option>
+            </select>
+          </label>
+        </div>
+      </section>
 
-    <section class="card">
-      <h2>練習</h2>
-      <p id="targetText">ここに単語列が表示されます。</p>
-      <textarea id="inputText" rows="5" placeholder="ここにタイピング"></textarea>
-      <div class="row">
-        <button id="finish">結果送信</button>
-        <span id="result"></span>
-      </div>
-    </section>
+      <!-- 練習エリア -->
+      <section class="card practice-card">
+        <div class="practice-header">
+          <h2>練習</h2>
+          <div class="live-stats">
+            <span class="stat"><span id="liveWpm">0</span> <small>WPM</small></span>
+            <span class="stat"><span id="liveAcc">100</span><small>%</small></span>
+            <span class="stat timer"><span id="liveTime">0</span><small>s</small></span>
+          </div>
+        </div>
+        <div id="targetDisplay" class="target-display">
+          <span class="placeholder">「練習開始」を押してください</span>
+        </div>
+        <textarea id="inputText" class="input-area" rows="3" placeholder="ここにタイピング..." disabled></textarea>
+        <div class="practice-actions">
+          <button id="startBtn" class="btn btn-primary" onclick="startPractice()">▶ 練習開始</button>
+          <button id="finishBtn" class="btn btn-success hidden" onclick="finishPractice()">✔ 結果送信</button>
+          <button id="retryBtn" class="btn btn-secondary hidden" onclick="retryPractice()">↺ もう一度</button>
+        </div>
+        <div id="resultCard" class="result-card hidden">
+          <div class="result-grid">
+            <div class="result-item"><div class="result-val" id="resScore">-</div><div class="result-label">スコア</div></div>
+            <div class="result-item"><div class="result-val" id="resWpm">-</div><div class="result-label">WPM</div></div>
+            <div class="result-item"><div class="result-val" id="resAcc">-</div><div class="result-label">精度</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
 
-    <section class="card">
-      <h2>ランキング</h2>
-      <button id="loadRanking">更新</button>
-      <ol id="ranking"></ol>
-    </section>
+    <!-- ===== ランキングタブ ===== -->
+    <div id="tab-ranking" class="tab-content hidden">
+      <section class="card">
+        <h2>🏆 ランキング</h2>
+        <div class="ranking-filters">
+          <label>言語 <select id="rankLang"></select></label>
+          <label>難易度 <select id="rankDiff"></select></label>
+          <label>範囲
+            <select id="rankScope">
+              <option value="global">グローバル</option>
+              <option value="team">チーム</option>
+            </select>
+          </label>
+          <label id="rankTeamLabel" class="hidden">チームID <input id="rankTeamId" placeholder="team-a" /></label>
+          <label>表示数 <select id="rankTop"><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option></select></label>
+          <button class="btn btn-primary" onclick="loadRanking()">更新</button>
+        </div>
+        <div id="rankingTable" class="ranking-table">
+          <p class="empty-msg">ランキングを読み込んでください</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== 単語管理タブ ===== -->
+    <div id="tab-admin" class="tab-content hidden">
+      <section class="card">
+        <h2>⚙️ 単語管理</h2>
+        <div class="admin-toolbar">
+          <label>言語 <select id="adminLang"><option value="">全て</option></select></label>
+          <label>難易度 <select id="adminDiff"><option value="">全て</option></select></label>
+          <button class="btn btn-primary" onclick="loadAdminWords()">検索</button>
+          <button class="btn btn-success" onclick="openWordModal()">＋ 追加</button>
+        </div>
+        <div id="adminWordTable" class="admin-table-wrap">
+          <p class="empty-msg">単語を検索してください</p>
+        </div>
+      </section>
+    </div>
+
   </main>
+
+  <!-- 単語追加/編集モーダル -->
+  <div id="wordModal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="modalTitle">単語を追加</h3>
+      <input type="hidden" id="editWordId" />
+      <label>単語 <input id="editWord" placeholder="例: synchronized" /></label>
+      <label>言語
+        <select id="editLang">
+          <option value="java">Java</option>
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+        </select>
+      </label>
+      <label>難易度
+        <select id="editDiff">
+          <option value="easy">Easy</option>
+          <option value="normal">Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
+      <label>重み (1-10) <input id="editWeight" type="number" min="1" max="10" value="5" /></label>
+      <label class="checkbox-label">
+        <input id="editEnabled" type="checkbox" checked /> 有効
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="saveWord()">保存</button>
+        <button class="btn btn-secondary" onclick="closeWordModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
