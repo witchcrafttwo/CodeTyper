@@ -336,8 +336,7 @@
                   <StackPanel HorizontalAlignment="Stretch">
                     <TextBlock Text="Type this word:" Foreground="#8892a4" FontSize="11"
                                HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                    <ScrollViewer x:Name="CurrentWordScrollViewer"
-                                  HorizontalScrollBarVisibility="Hidden"
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden"
                                   VerticalScrollBarVisibility="Disabled"
                                   Height="48">
                       <TextBlock x:Name="CurrentWordText" Text="---"

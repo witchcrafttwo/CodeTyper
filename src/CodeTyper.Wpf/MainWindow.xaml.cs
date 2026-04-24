@@ -196,7 +196,7 @@ public partial class MainWindow : Window
         _isAdvancingWord = false;
         CurrentWordText.Text = _words[_currentIndex].Word;
         CurrentWordText.Foreground = new SolidColorBrush(Color.FromRgb(0xe2, 0xe8, 0xf0));
-        CurrentWordScrollViewer.ScrollToHorizontalOffset(0);
+        GetCurrentWordScrollViewer()?.ScrollToHorizontalOffset(0);
 
         NextWordText.Text = _currentIndex + 1 < _words.Count
             ? $"Next: {_words[_currentIndex + 1].Word}"
@@ -670,11 +670,25 @@ public partial class MainWindow : Window
 
     private void ScrollCurrentWordToInput(int inputLength, int targetLength)
     {
-        if (targetLength <= 0 || CurrentWordScrollViewer.ScrollableWidth <= 0)
+        var scrollViewer = GetCurrentWordScrollViewer();
+        if (targetLength <= 0 || scrollViewer is null || scrollViewer.ScrollableWidth <= 0)
             return;
 
         var progress = Math.Clamp((double)inputLength / targetLength, 0, 1);
-        CurrentWordScrollViewer.ScrollToHorizontalOffset(CurrentWordScrollViewer.ScrollableWidth * progress);
+        scrollViewer.ScrollToHorizontalOffset(scrollViewer.ScrollableWidth * progress);
+    }
+
+    private ScrollViewer? GetCurrentWordScrollViewer()
+    {
+        DependencyObject? current = CurrentWordText;
+        while (current is not null)
+        {
+            current = VisualTreeHelper.GetParent(current);
+            if (current is ScrollViewer scrollViewer)
+                return scrollViewer;
+        }
+
+        return null;
     }
 
     private void HomeBtn_Click(object sender, RoutedEventArgs e)
