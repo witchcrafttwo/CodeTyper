@@ -32,10 +32,15 @@ public partial class MainWindow : Window
     private bool _currentWordHasMistake = false;
     private bool _isAdvancingWord = false;
     private bool _isEndingGame = false;
+    private bool _adminUnlocked = false;
+    private bool _handlingTabSelectionChange = false;
+    private int _lastNonAdminTabIndex = 0;
 
     private const string BaseUrl = "http://localhost:5000";
+    private const string AdminPassword = "5432";
     private const int FixedWordCount = 20;
     private const int TimeLimitSeconds = 60;
+    private const int AdminTabIndex = 2;
 
     public MainWindow(string? playerName, string scope, string? groupId, bool openRanking = false)
     {
@@ -465,6 +470,35 @@ public partial class MainWindow : Window
         LoadRanking_Click(sender, e);
     }
 
+    private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.Source, MainTabControl) || _handlingTabSelectionChange)
+            return;
+
+        if (MainTabControl.SelectedIndex == AdminTabIndex)
+        {
+            if (_adminUnlocked)
+                return;
+
+            var password = PromptForAdminPassword();
+            if (password == AdminPassword)
+            {
+                _adminUnlocked = true;
+                _api.SetAdminPassword(password);
+                SearchWords_Click(this, new RoutedEventArgs());
+                return;
+            }
+
+            MessageBox.Show("Incorrect password.", "Access denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _handlingTabSelectionChange = true;
+            MainTabControl.SelectedIndex = _lastNonAdminTabIndex;
+            _handlingTabSelectionChange = false;
+            return;
+        }
+
+        _lastNonAdminTabIndex = MainTabControl.SelectedIndex;
+    }
+
     // ── Ranking ───────────────────────────────────────────────────────────────
     private void PopulateRankingFilters()
     {
@@ -612,6 +646,83 @@ public partial class MainWindow : Window
         _timer?.Stop();
         new HomeWindow().Show();
         Close();
+    }
+
+    private string? PromptForAdminPassword()
+    {
+        var dialog = new Window
+        {
+            Title = "Admin Password",
+            Width = 320,
+            Height = 180,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStyle = WindowStyle.ToolWindow,
+            Owner = this,
+            Background = new SolidColorBrush(Color.FromRgb(0x1a, 0x1d, 0x27)),
+            Foreground = new SolidColorBrush(Color.FromRgb(0xe2, 0xe8, 0xf0))
+        };
+
+        var passwordBox = new PasswordBox
+        {
+            Margin = new Thickness(0, 0, 0, 12),
+            Padding = new Thickness(8, 6, 8, 6)
+        };
+
+        var okButton = new Button
+        {
+            Content = "OK",
+            Width = 90,
+            Height = 32,
+            Margin = new Thickness(0, 0, 8, 0),
+            Background = new SolidColorBrush(Color.FromRgb(0x63, 0x66, 0xf1)),
+            Foreground = Brushes.White,
+            BorderThickness = new Thickness(0)
+        };
+
+        var cancelButton = new Button
+        {
+            Content = "Cancel",
+            Width = 90,
+            Height = 32,
+            Background = new SolidColorBrush(Color.FromRgb(0x25, 0x28, 0x36)),
+            Foreground = new SolidColorBrush(Color.FromRgb(0xe2, 0xe8, 0xf0)),
+            BorderThickness = new Thickness(0)
+        };
+
+        okButton.Click += (_, _) => dialog.DialogResult = true;
+        cancelButton.Click += (_, _) => dialog.DialogResult = false;
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        buttons.Children.Add(okButton);
+        buttons.Children.Add(cancelButton);
+
+        var root = new StackPanel
+        {
+            Margin = new Thickness(20)
+        };
+        root.Children.Add(new TextBlock
+        {
+            Text = "Enter the admin password to open Word Admin.",
+            Margin = new Thickness(0, 0, 0, 12),
+            TextWrapping = TextWrapping.Wrap
+        });
+        root.Children.Add(passwordBox);
+        root.Children.Add(buttons);
+
+        dialog.Content = root;
+        dialog.Loaded += (_, _) => passwordBox.Focus();
+        passwordBox.KeyDown += (_, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+                dialog.DialogResult = true;
+        };
+
+        return dialog.ShowDialog() == true ? passwordBox.Password : null;
     }
 }
 

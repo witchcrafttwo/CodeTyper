@@ -213,7 +213,8 @@
       </DockPanel>
     </Border>
 
-    <TabControl x:Name="MainTabControl" Background="#0f1117" BorderThickness="0" Padding="0">
+    <TabControl x:Name="MainTabControl" Background="#0f1117" BorderThickness="0" Padding="0"
+                SelectionChanged="MainTabControl_SelectionChanged">
       <TabControl.Template>
         <ControlTemplate TargetType="TabControl">
           <DockPanel>

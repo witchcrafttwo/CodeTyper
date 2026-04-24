@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+var adminPassword = builder.Configuration["Admin:Password"] ?? "5432";
 
 // ── Database ──────────────────────────────────────────────────────────────────
 var databaseProvider = builder.Configuration["Database:Provider"] ?? "Sqlite";
@@ -94,28 +95,40 @@ app.MapGet("/words", async (string language, string difficulty, int? count, IWor
 });
 
 // ── Word Management (Admin) ───────────────────────────────────────────────────
-app.MapGet("/admin/words", async (string? language, string? difficulty, IWordStore words) =>
+app.MapGet("/admin/words", async (HttpRequest request, string? language, string? difficulty, IWordStore words) =>
 {
+    if (!HasValidAdminPassword(request, adminPassword))
+        return Results.Unauthorized();
+
     var result = await words.GetAllWordsAsync(language, difficulty);
     return Results.Ok(result);
 });
 
-app.MapPost("/admin/words", async (WordUpsertRequest request, IWordStore words) =>
+app.MapPost("/admin/words", async (HttpRequest httpRequest, WordUpsertRequest request, IWordStore words) =>
 {
+    if (!HasValidAdminPassword(httpRequest, adminPassword))
+        return Results.Unauthorized();
+
     if (string.IsNullOrWhiteSpace(request.Word) || string.IsNullOrWhiteSpace(request.Language) || string.IsNullOrWhiteSpace(request.Difficulty))
         return Results.BadRequest("word, language, difficulty are required");
     var result = await words.AddWordAsync(request);
     return Results.Ok(result);
 });
 
-app.MapPut("/admin/words/{wordId:guid}", async (Guid wordId, WordUpsertRequest request, IWordStore words) =>
+app.MapPut("/admin/words/{wordId:guid}", async (HttpRequest httpRequest, Guid wordId, WordUpsertRequest request, IWordStore words) =>
 {
+    if (!HasValidAdminPassword(httpRequest, adminPassword))
+        return Results.Unauthorized();
+
     var result = await words.UpdateWordAsync(wordId, request);
     return result is null ? Results.NotFound() : Results.Ok(result);
 });
 
-app.MapDelete("/admin/words/{wordId:guid}", async (Guid wordId, IWordStore words) =>
+app.MapDelete("/admin/words/{wordId:guid}", async (HttpRequest request, Guid wordId, IWordStore words) =>
 {
+    if (!HasValidAdminPassword(request, adminPassword))
+        return Results.Unauthorized();
+
     var deleted = await words.DeleteWordAsync(wordId);
     return deleted ? Results.NoContent() : Results.NotFound();
 });
@@ -206,6 +219,12 @@ static string ResolvePostgresConnectionString(IConfiguration config)
         SslMode = Enum.Parse<SslMode>(sslMode, ignoreCase: true),
         Timeout = 15, CommandTimeout = 30, Pooling = true, MaxPoolSize = 50
     }.ConnectionString;
+}
+
+static bool HasValidAdminPassword(HttpRequest request, string expectedPassword)
+{
+    return request.Headers.TryGetValue("X-Admin-Password", out var provided) &&
+           provided.Any(value => value == expectedPassword);
 }
 
 public sealed record AliasUpdateRequest(string GlobalAlias);

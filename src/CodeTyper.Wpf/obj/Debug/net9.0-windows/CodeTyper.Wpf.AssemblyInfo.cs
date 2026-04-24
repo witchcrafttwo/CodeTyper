@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CodeTyper.Wpf")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8f6968f5f12b918feb7d8b0e0ac29f673796c284")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4a2998c4735a018232f5270d7d80de645dd237bb")]
 [assembly: System.Reflection.AssemblyProductAttribute("CodeTyper.Wpf")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CodeTyper.Wpf")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
