@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using CodeTyper.Wpf.Models;
@@ -6,12 +7,18 @@ namespace CodeTyper.Wpf.Services;
 
 public class ApiClient(HttpClient http)
 {
-    private string? _adminPassword;
-
-    public void SetAdminPassword(string? password) => _adminPassword = password;
-
     public async Task<List<ModeDefinition>> GetModesAsync() =>
         await http.GetFromJsonAsync<List<ModeDefinition>>("/modes") ?? [];
+
+    public async Task<bool> AdminLoginAsync(string password)
+    {
+        var res = await http.PostAsJsonAsync("/admin/login", new { password });
+        if (res.StatusCode == HttpStatusCode.Unauthorized)
+            return false;
+
+        res.EnsureSuccessStatusCode();
+        return true;
+    }
 
     public async Task<List<WordEntry>> GetWordsAsync(string language, string difficulty, int count) =>
         await http.GetFromJsonAsync<List<WordEntry>>($"/words?language={language}&difficulty={difficulty}&count={count}") ?? [];
@@ -77,11 +84,6 @@ public class ApiClient(HttpClient http)
 
     private HttpRequestMessage CreateAdminRequest(HttpMethod method, string url)
     {
-        if (string.IsNullOrEmpty(_adminPassword))
-            throw new InvalidOperationException("Admin password is not set.");
-
-        var request = new HttpRequestMessage(method, url);
-        request.Headers.Add("X-Admin-Password", _adminPassword);
-        return request;
+        return new HttpRequestMessage(method, url);
     }
 }

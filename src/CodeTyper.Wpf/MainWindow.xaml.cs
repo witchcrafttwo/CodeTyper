@@ -37,7 +37,6 @@ public partial class MainWindow : Window
     private int _lastNonAdminTabIndex = 0;
 
     private const string BaseUrl = "http://localhost:5000";
-    private const string AdminPassword = "5432";
     private const int FixedWordCount = 20;
     private const int TimeLimitSeconds = 60;
     private const int AdminTabIndex = 2;
@@ -470,7 +469,7 @@ public partial class MainWindow : Window
         LoadRanking_Click(sender, e);
     }
 
-    private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!ReferenceEquals(e.Source, MainTabControl) || _handlingTabSelectionChange)
             return;
@@ -481,18 +480,31 @@ public partial class MainWindow : Window
                 return;
 
             var password = PromptForAdminPassword();
-            if (password == AdminPassword)
+            if (string.IsNullOrEmpty(password))
             {
-                _adminUnlocked = true;
-                _api.SetAdminPassword(password);
-                SearchWords_Click(this, new RoutedEventArgs());
+                ReturnToLastNonAdminTab();
                 return;
             }
 
-            MessageBox.Show("Incorrect password.", "Access denied", MessageBoxButton.OK, MessageBoxImage.Warning);
-            _handlingTabSelectionChange = true;
-            MainTabControl.SelectedIndex = _lastNonAdminTabIndex;
-            _handlingTabSelectionChange = false;
+            try
+            {
+                if (!await _api.AdminLoginAsync(password))
+                {
+                    MessageBox.Show("Incorrect password.", "Access denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ReturnToLastNonAdminTab();
+                    return;
+                }
+
+                await LoadAdminWordsAsync();
+                _adminUnlocked = true;
+                return;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Word load error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            ReturnToLastNonAdminTab();
             return;
         }
 
@@ -556,19 +568,32 @@ public partial class MainWindow : Window
 
     private async void SearchWords_Click(object sender, RoutedEventArgs e)
     {
-        var lang = AdminLangCombo.SelectedItem?.ToString();
-        var diff = AdminDiffCombo.SelectedItem?.ToString();
-        if (lang == "(All)") lang = null;
-        if (diff == "(All)") diff = null;
         try
         {
-            var words = await _api.GetAllWordsAsync(lang, diff);
-            WordGrid.ItemsSource = words.Select(w => new WordRow(w)).ToList();
+            await LoadAdminWordsAsync();
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Word load error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private async Task LoadAdminWordsAsync()
+    {
+        var lang = AdminLangCombo.SelectedItem?.ToString();
+        var diff = AdminDiffCombo.SelectedItem?.ToString();
+        if (lang == "(All)") lang = null;
+        if (diff == "(All)") diff = null;
+
+        var words = await _api.GetAllWordsAsync(lang, diff);
+        WordGrid.ItemsSource = words.Select(w => new WordRow(w)).ToList();
+    }
+
+    private void ReturnToLastNonAdminTab()
+    {
+        _handlingTabSelectionChange = true;
+        MainTabControl.SelectedIndex = _lastNonAdminTabIndex;
+        _handlingTabSelectionChange = false;
     }
 
     private void AddWord_Click(object sender, RoutedEventArgs e)

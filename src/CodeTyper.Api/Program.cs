@@ -9,7 +9,9 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
-var adminPassword = builder.Configuration["Admin:Password"] ?? "5432";
+var adminPassword = builder.Configuration["Admin:Password"];
+if (string.IsNullOrWhiteSpace(adminPassword))
+    throw new InvalidOperationException("Admin:Password must be configured on the API server.");
 
 // ── Database ──────────────────────────────────────────────────────────────────
 var databaseProvider = builder.Configuration["Database:Provider"] ?? "Sqlite";
@@ -95,18 +97,41 @@ app.MapGet("/words", async (string language, string difficulty, int? count, IWor
 });
 
 // ── Word Management (Admin) ───────────────────────────────────────────────────
-app.MapGet("/admin/words", async (HttpRequest request, string? language, string? difficulty, IWordStore words) =>
+app.MapPost("/admin/login", async (AdminLoginRequest request, HttpContext ctx) =>
 {
-    if (!HasValidAdminPassword(request, adminPassword))
+    if (request.Password != adminPassword)
+        return Results.Unauthorized();
+
+    var claims = new[]
+    {
+        new Claim(ClaimTypes.NameIdentifier, "admin"),
+        new Claim(ClaimTypes.Role, "Admin")
+    };
+    var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+    var principal = new ClaimsPrincipal(identity);
+
+    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+    return Results.Ok(new { authenticated = true });
+});
+
+app.MapPost("/admin/logout", async (HttpContext ctx) =>
+{
+    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.NoContent();
+});
+
+app.MapGet("/admin/words", async (HttpContext ctx, string? language, string? difficulty, IWordStore words) =>
+{
+    if (!IsAdmin(ctx))
         return Results.Unauthorized();
 
     var result = await words.GetAllWordsAsync(language, difficulty);
     return Results.Ok(result);
 });
 
-app.MapPost("/admin/words", async (HttpRequest httpRequest, WordUpsertRequest request, IWordStore words) =>
+app.MapPost("/admin/words", async (HttpContext ctx, WordUpsertRequest request, IWordStore words) =>
 {
-    if (!HasValidAdminPassword(httpRequest, adminPassword))
+    if (!IsAdmin(ctx))
         return Results.Unauthorized();
 
     if (string.IsNullOrWhiteSpace(request.Word) || string.IsNullOrWhiteSpace(request.Language) || string.IsNullOrWhiteSpace(request.Difficulty))
@@ -115,18 +140,18 @@ app.MapPost("/admin/words", async (HttpRequest httpRequest, WordUpsertRequest re
     return Results.Ok(result);
 });
 
-app.MapPut("/admin/words/{wordId:guid}", async (HttpRequest httpRequest, Guid wordId, WordUpsertRequest request, IWordStore words) =>
+app.MapPut("/admin/words/{wordId:guid}", async (HttpContext ctx, Guid wordId, WordUpsertRequest request, IWordStore words) =>
 {
-    if (!HasValidAdminPassword(httpRequest, adminPassword))
+    if (!IsAdmin(ctx))
         return Results.Unauthorized();
 
     var result = await words.UpdateWordAsync(wordId, request);
     return result is null ? Results.NotFound() : Results.Ok(result);
 });
 
-app.MapDelete("/admin/words/{wordId:guid}", async (HttpRequest request, Guid wordId, IWordStore words) =>
+app.MapDelete("/admin/words/{wordId:guid}", async (HttpContext ctx, Guid wordId, IWordStore words) =>
 {
-    if (!HasValidAdminPassword(request, adminPassword))
+    if (!IsAdmin(ctx))
         return Results.Unauthorized();
 
     var deleted = await words.DeleteWordAsync(wordId);
@@ -221,10 +246,10 @@ static string ResolvePostgresConnectionString(IConfiguration config)
     }.ConnectionString;
 }
 
-static bool HasValidAdminPassword(HttpRequest request, string expectedPassword)
+static bool IsAdmin(HttpContext ctx)
 {
-    return request.Headers.TryGetValue("X-Admin-Password", out var provided) &&
-           provided.Any(value => value == expectedPassword);
+    return ctx.User.Identity?.IsAuthenticated == true && ctx.User.IsInRole("Admin");
 }
 
+public sealed record AdminLoginRequest(string Password);
 public sealed record AliasUpdateRequest(string GlobalAlias);
