@@ -1,5 +1,5 @@
 ﻿CodeTyper.Wpf
-
+1.0.0.0
 
 winexe
 C#
@@ -12,7 +12,7 @@ TRACE;DEBUG;NET;NET9_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR
 C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Wpf\App.xaml
 3455238918
 
-8732656200
+10353048370
 214-999706265
 HomeWindow.xaml;MainWindow.xaml;WordEditDialog.xaml;
 
