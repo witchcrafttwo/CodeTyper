@@ -99,7 +99,7 @@ namespace CodeTyper.Wpf {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/CodeTyper.Wpf;V1.0.0.0;component/wordeditdialog.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/CodeTyper.Wpf;component/wordeditdialog.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\WordEditDialog.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

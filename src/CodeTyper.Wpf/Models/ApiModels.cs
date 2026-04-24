@@ -12,6 +12,6 @@ public record ScoreEntry(
 public record ScoreSubmission(
     string UserId, string DisplayName, string? TeamId,
     string Scope, string Language, string Difficulty,
-    int CorrectChars, double Wpm, double Accuracy, int MissCount);
+    int CorrectChars, double Wpm, double Accuracy, int MissCount, double? Score);
 
 public record WordUpsertRequest(string Word, string Language, string Difficulty, int Weight, bool Enabled);

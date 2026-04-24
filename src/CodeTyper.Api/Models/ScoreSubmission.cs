@@ -10,4 +10,5 @@ public sealed record ScoreSubmission(
     int CorrectChars,
     double Wpm,
     double Accuracy,
-    int MissCount);
+    int MissCount,
+    double? Score);

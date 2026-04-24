@@ -14,13 +14,32 @@ public sealed class EfWordStore(AppDbContext dbContext) : IWordStore
             .Select(w => new WordEntry(w.WordId, w.Word, w.Language, w.Difficulty, w.Weight, w.Enabled))
             .ToListAsync();
 
-        if (filtered.Count == 0) return [];
+        if (filtered.Count == 0 || count <= 0) return [];
 
-        return filtered
-            .SelectMany(x => Enumerable.Repeat(x, Math.Max(1, x.Weight)))
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(count)
-            .ToList();
+        var weightedPool = filtered
+            .SelectMany(word => Enumerable.Repeat(word, Math.Max(1, word.Weight)))
+            .ToArray();
+
+        if (weightedPool.Length == 0) return [];
+
+        var result = new List<WordEntry>(count);
+        WordEntry? previous = null;
+
+        for (var i = 0; i < count; i++)
+        {
+            var candidates = previous is null
+                ? weightedPool
+                : weightedPool.Where(word => word.WordId != previous.WordId).ToArray();
+
+            if (candidates.Length == 0)
+                candidates = weightedPool;
+
+            var next = candidates[Random.Shared.Next(candidates.Length)];
+            result.Add(next);
+            previous = next;
+        }
+
+        return result;
     }
 
     public async Task<IReadOnlyList<WordEntry>> GetAllWordsAsync(string? language, string? difficulty)

@@ -69,9 +69,6 @@ C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\rji
 C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
 C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\scopedcss\bundle\CodeTyper.Api.styles.css
-C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\compressed\9hjernqvve-{0}-s6x0zt0o9v-s6x0zt0o9v.gz
-C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\compressed\09rlceuckv-{0}-knt3pw6hxu-knt3pw6hxu.gz
-C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\compressed\f116zhoit5-{0}-l3xuk9e71u-l3xuk9e71u.gz
 C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\staticwebassets.build.json
 C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\staticwebassets.build.json.cache
 C:\Users\yunre\documents\GitHub\CodeTyper\src\CodeTyper.Api\obj\Debug\net9.0\staticwebassets.development.json

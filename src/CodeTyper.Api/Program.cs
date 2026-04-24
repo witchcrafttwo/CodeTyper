@@ -57,8 +57,6 @@ using (var scope = app.Services.CreateScope())
     await db.Database.EnsureCreatedAsync();
 }
 
-app.UseDefaultFiles();
-app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -156,7 +154,7 @@ app.MapPost("/scores", async (ScoreSubmission submission, IScoreStore scoreStore
         !submission.Scope.Equals("global", StringComparison.OrdinalIgnoreCase))
         return Results.BadRequest("scope must be team or global");
 
-    var calculated = ScoreCalculator.Calculate(
+    var calculated = submission.Score ?? ScoreCalculator.Calculate(
         submission.CorrectChars, submission.Wpm, submission.Accuracy, submission.MissCount);
 
     var entry = new ScoreEntry(
@@ -172,8 +170,8 @@ app.MapPost("/scores", async (ScoreSubmission submission, IScoreStore scoreStore
         calculated,
         DateTimeOffset.UtcNow);
 
-    await scoreStore.SaveScoreAsync(entry);
-    return Results.Ok(entry);
+    var saved = await scoreStore.SaveScoreAsync(entry);
+    return Results.Ok(saved);
 });
 
 app.MapGet("/rankings", async (string scope, string language, string difficulty, string? teamId, int? top, IScoreStore scoreStore) =>

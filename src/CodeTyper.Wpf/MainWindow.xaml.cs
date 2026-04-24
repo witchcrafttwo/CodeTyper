@@ -1,4 +1,4 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -29,8 +29,13 @@ public partial class MainWindow : Window
     private DateTime _startedAt;
     private DispatcherTimer? _timer;
     private bool _gameRunning = false;
+    private bool _currentWordHasMistake = false;
+    private bool _isAdvancingWord = false;
+    private bool _isEndingGame = false;
 
     private const string BaseUrl = "http://localhost:5000";
+    private const int FixedWordCount = 20;
+    private const int TimeLimitSeconds = 60;
 
     public MainWindow(string? playerName, string scope, string? groupId, bool openRanking = false)
     {
@@ -73,6 +78,7 @@ public partial class MainWindow : Window
             ScopePanel.Visibility = _playerName is not null ? Visibility.Collapsed : Visibility.Visible;
             PlayerNameBox.Text = _playerName ?? "";
             PlayerNameBox.IsEnabled = _playerName is null;
+            LiveTime.Text = TimeLimitSeconds.ToString();
         }
         catch (Exception ex)
         {
@@ -82,7 +88,6 @@ public partial class MainWindow : Window
         }
     }
 
-    // ── Mode ──────────────────────────────────────────────────────────────────
     // ── Mode ──────────────────────────────────────────────────────────────────
     private void PopulateModeGrid()
     {
@@ -96,15 +101,9 @@ public partial class MainWindow : Window
         if (diffs.Count > 0) DiffCombo.SelectedIndex = 0;
     }
 
-    private void LangCombo_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        UpdateSelectedMode();
-    }
+    private void LangCombo_Changed(object sender, SelectionChangedEventArgs e) => UpdateSelectedMode();
 
-    private void DiffCombo_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        UpdateSelectedMode();
-    }
+    private void DiffCombo_Changed(object sender, SelectionChangedEventArgs e) => UpdateSelectedMode();
 
     private void UpdateSelectedMode()
     {
@@ -130,6 +129,7 @@ public partial class MainWindow : Window
             MessageBox.Show("Please select a mode.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+
         var playerName = _playerName ?? PlayerNameBox.Text.Trim();
         if (string.IsNullOrEmpty(playerName))
         {
@@ -137,12 +137,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        var countTag = (WordCountCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "20";
-        var count = int.Parse(countTag);
-
         try
         {
-            _words = await _api.GetWordsAsync(_selectedMode.Language, _selectedMode.Difficulty, count);
+            _words = await _api.GetWordsAsync(_selectedMode.Language, _selectedMode.Difficulty, FixedWordCount);
             if (_words.Count == 0)
             {
                 MessageBox.Show("No words found for this mode.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -155,21 +152,23 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Reset state
         _currentIndex = 0;
         _correctCount = 0;
         _missCount = 0;
         _totalTyped = 0;
         _liveScore = 0;
         _gameRunning = true;
+        _currentWordHasMistake = false;
+        _isAdvancingWord = false;
+        _isEndingGame = false;
         _startedAt = DateTime.Now;
 
-        // UI reset
         ResultCard.Visibility = Visibility.Collapsed;
         StartBtn.Visibility = Visibility.Collapsed;
         RetryBtn.Visibility = Visibility.Collapsed;
         InputBox.IsEnabled = true;
         PlayerNameBox.IsEnabled = false;
+        LiveTime.Text = TimeLimitSeconds.ToString();
 
         UpdateProgressBar();
         ShowCurrentWord();
@@ -180,63 +179,78 @@ public partial class MainWindow : Window
     // ── Word Display ──────────────────────────────────────────────────────────
     private void ShowCurrentWord()
     {
+        if (!_gameRunning || _isEndingGame)
+            return;
+
         if (_currentIndex >= _words.Count)
         {
             EndGame();
             return;
         }
 
+        _currentWordHasMistake = false;
+        _isAdvancingWord = false;
         CurrentWordText.Text = _words[_currentIndex].Word;
         CurrentWordText.Foreground = new SolidColorBrush(Color.FromRgb(0xe2, 0xe8, 0xf0));
 
-        // 次の単語プレビュー
         NextWordText.Text = _currentIndex + 1 < _words.Count
             ? $"Next: {_words[_currentIndex + 1].Word}"
             : "Last word!";
 
+        InputBox.IsEnabled = true;
         InputBox.Text = "";
+        InputBox.Background = new SolidColorBrush(Color.FromRgb(0x25, 0x28, 0x36));
         FeedbackText.Text = "";
         FeedbackText.Foreground = Brushes.Transparent;
+        InputBox.Focus();
     }
 
     // ── Input Handling ────────────────────────────────────────────────────────
     private void InputBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (!_gameRunning) return;
+        if (!_gameRunning || _isAdvancingWord || _isEndingGame) return;
 
         var input = InputBox.Text;
         var target = _words[_currentIndex].Word;
+        var hasError = input.Length > 0 && !target.StartsWith(input, StringComparison.Ordinal);
 
-        // 入力中のリアルタイムハイライト
-        bool allCorrectSoFar = input.Length > 0 && target.StartsWith(input);
-        bool hasError = input.Length > 0 && !target.StartsWith(input);
+        if (hasError && !_currentWordHasMistake)
+        {
+            _currentWordHasMistake = true;
+            _liveScore = 0;
+            ShowFeedback("Score reset", isCorrect: false);
+        }
 
         InputBox.Background = hasError
             ? new SolidColorBrush(Color.FromRgb(0x3b, 0x1a, 0x1a))
             : new SolidColorBrush(Color.FromRgb(0x25, 0x28, 0x36));
 
         UpdateLiveStats();
+
+        if (input.Length >= target.Length)
+            ResolveCurrentWord(input, target);
     }
 
     private void InputBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (!_gameRunning) return;
-        if (e.Key != System.Windows.Input.Key.Space && e.Key != System.Windows.Input.Key.Enter) return;
+        if (e.Key == System.Windows.Input.Key.Space || e.Key == System.Windows.Input.Key.Enter)
+            e.Handled = true;
+    }
 
-        e.Handled = true;
-        var input = InputBox.Text.Trim();
-        var target = _words[_currentIndex].Word;
+    private void ResolveCurrentWord(string input, string target)
+    {
+        if (_isAdvancingWord || _isEndingGame) return;
 
-        if (string.IsNullOrEmpty(input)) return;
+        _isAdvancingWord = true;
+        InputBox.IsEnabled = false;
 
-        if (input == target)
+        if (!_currentWordHasMistake && string.Equals(input, target, StringComparison.Ordinal))
         {
-            // 正解
             _correctCount++;
             _totalTyped += target.Length;
 
-            // スコア加算: 単語の長さ × 難易度ボーナス
-            double wordScore = target.Length * DifficultyMultiplier(_selectedMode!.Difficulty);
+            var wordScore = target.Length * DifficultyMultiplier(_selectedMode!.Difficulty);
             _liveScore += wordScore;
 
             CurrentWordText.Foreground = new SolidColorBrush(Color.FromRgb(0x22, 0xc5, 0x5e));
@@ -244,20 +258,22 @@ public partial class MainWindow : Window
         }
         else
         {
-            // 不正解
             _missCount++;
-            _liveScore = Math.Max(0, _liveScore - 5);
+            _liveScore = 0;
             CurrentWordText.Foreground = new SolidColorBrush(Color.FromRgb(0xef, 0x44, 0x44));
-            ShowFeedback("-5", isCorrect: false);
+            ShowFeedback("Score reset", isCorrect: false);
         }
 
         LiveScore.Text = ((int)_liveScore).ToString();
         _currentIndex++;
         UpdateProgressBar();
 
-        // 少し待ってから次の単語へ
         var delay = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
-        delay.Tick += (_, _) => { delay.Stop(); ShowCurrentWord(); };
+        delay.Tick += (_, _) =>
+        {
+            delay.Stop();
+            ShowCurrentWord();
+        };
         delay.Start();
     }
 
@@ -283,7 +299,6 @@ public partial class MainWindow : Window
         if (_words.Count == 0) return;
         ProgressText.Text = $"{_currentIndex} / {_words.Count}";
 
-        // ProgressBarの幅を親に合わせて計算
         var parent = ProgressBar.Parent as Border;
         if (parent is null) return;
         double ratio = (double)_currentIndex / _words.Count;
@@ -294,19 +309,24 @@ public partial class MainWindow : Window
     private void StartTimer()
     {
         _timer?.Stop();
+        LiveTime.Text = TimeLimitSeconds.ToString();
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _timer.Tick += (_, _) =>
         {
-            var elapsed = (DateTime.Now - _startedAt).TotalSeconds;
-            LiveTime.Text = ((int)elapsed).ToString();
+            var remaining = GetRemainingSeconds();
+            LiveTime.Text = remaining.ToString();
             UpdateLiveStats();
+
+            if (remaining <= 0)
+                EndGame();
         };
         _timer.Start();
     }
 
     private void UpdateLiveStats()
     {
-        var elapsed = Math.Max((DateTime.Now - _startedAt).TotalSeconds, 1);
+        var elapsed = Math.Min((DateTime.Now - _startedAt).TotalSeconds, TimeLimitSeconds);
+        elapsed = Math.Max(elapsed, 1);
         var wpm = (_totalTyped / 5.0) / (elapsed / 60.0);
         var totalAttempts = _correctCount + _missCount;
         var acc = totalAttempts == 0 ? 100.0 : (double)_correctCount / totalAttempts * 100;
@@ -319,18 +339,24 @@ public partial class MainWindow : Window
     // ── Game End ──────────────────────────────────────────────────────────────
     private async void EndGame()
     {
+        if (_isEndingGame) return;
+
+        _isEndingGame = true;
         _gameRunning = false;
         _timer?.Stop();
         InputBox.IsEnabled = false;
         PlayerNameBox.IsEnabled = true;
 
-        var elapsed = Math.Max((DateTime.Now - _startedAt).TotalSeconds, 1);
+        var elapsed = Math.Min((DateTime.Now - _startedAt).TotalSeconds, TimeLimitSeconds);
+        elapsed = Math.Max(elapsed, 1);
+        var finishedAllWords = _currentIndex >= _words.Count;
+        var remainingBonus = GetRemainingSeconds();
+        var finalScore = _liveScore + remainingBonus;
         var wpm = (_totalTyped / 5.0) / (elapsed / 60.0);
         var totalAttempts = _correctCount + _missCount;
         var acc = totalAttempts == 0 ? 100.0 : (double)_correctCount / totalAttempts * 100;
 
-        // 結果表示
-        ResScore.Text = ((int)_liveScore).ToString();
+        ResScore.Text = ((int)finalScore).ToString();
         ResWpm.Text = wpm.ToString("F1");
         ResAcc.Text = $"{acc:F1}%";
         ResCorrect.Text = $"{_correctCount}/{_words.Count}";
@@ -338,22 +364,24 @@ public partial class MainWindow : Window
         RetryBtn.Visibility = Visibility.Visible;
         ViewRankingBtn.Visibility = Visibility.Visible;
 
-        CurrentWordText.Text = "Done!";
+        CurrentWordText.Text = finishedAllWords ? "Finished!" : "Time Up!";
         NextWordText.Text = "";
-        FeedbackText.Text = "";
+        FeedbackText.Text = remainingBonus > 0
+            ? $"+{remainingBonus} time bonus"
+            : "";
 
-        // スコアをDBに送信
         var playerName = _playerName ?? PlayerNameBox.Text.Trim();
         var scope = _playerName is not null ? _scope : GetTag(ScopeCombo) ?? "global";
         var teamId = scope == "team" ? (_groupId ?? TeamIdBox.Text.Trim()) : null;
 
-        // ユーザーをupsert（名前ベースのシンプルなID）
         var userId = $"player:{playerName.ToLower().Replace(" ", "_")}";
         try
         {
             await _api.UpsertUserAsync(userId, playerName, teamId);
         }
-        catch { /* ユーザー作成失敗は無視してスコアだけ送る */ }
+        catch
+        {
+        }
 
         var submission = new ScoreSubmission(
             userId, playerName, teamId, scope,
@@ -361,11 +389,17 @@ public partial class MainWindow : Window
             _totalTyped,
             Math.Round(wpm, 2),
             Math.Round(acc, 2),
-            _missCount);
+            _missCount,
+            Math.Round(finalScore, 2));
 
         try
         {
-            await _api.SubmitScoreAsync(submission);
+            var saved = await _api.SubmitScoreAsync(submission);
+            if (saved is not null)
+            {
+                ResScore.Text = ((int)saved.Score).ToString();
+                LiveScore.Text = ((int)saved.Score).ToString();
+            }
             StatusText.Text = "Score saved!";
         }
         catch (Exception ex)
@@ -378,6 +412,9 @@ public partial class MainWindow : Window
     {
         _timer?.Stop();
         _gameRunning = false;
+        _currentWordHasMistake = false;
+        _isAdvancingWord = false;
+        _isEndingGame = false;
         ResultCard.Visibility = Visibility.Collapsed;
         RetryBtn.Visibility = Visibility.Collapsed;
         ViewRankingBtn.Visibility = Visibility.Collapsed;
@@ -388,16 +425,24 @@ public partial class MainWindow : Window
         CurrentWordText.Text = "---";
         NextWordText.Text = "";
         FeedbackText.Text = "";
-        LiveScore.Text = "0"; LiveWpm.Text = "0"; LiveAcc.Text = "100"; LiveTime.Text = "0";
+        LiveScore.Text = "0";
+        LiveWpm.Text = "0";
+        LiveAcc.Text = "100";
+        LiveTime.Text = TimeLimitSeconds.ToString();
         ProgressText.Text = "0 / 0";
         ProgressBar.Width = 0;
+    }
+
+    private int GetRemainingSeconds()
+    {
+        var elapsed = (DateTime.Now - _startedAt).TotalSeconds;
+        return Math.Max(0, TimeLimitSeconds - (int)Math.Ceiling(elapsed));
     }
 
     private void ViewRanking_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedMode is not null)
         {
-            // ランキングフィルターに直前のモードを反映
             var langs = RankLangCombo.ItemsSource as List<string>;
             var diffs = RankDiffCombo.ItemsSource as List<string>;
             var li = langs?.IndexOf(_selectedMode.Language) ?? -1;
@@ -409,9 +454,13 @@ public partial class MainWindow : Window
             for (int i = 0; i < RankScopeCombo.Items.Count; i++)
             {
                 if ((RankScopeCombo.Items[i] as ComboBoxItem)?.Tag?.ToString() == scope)
-                { RankScopeCombo.SelectedIndex = i; break; }
+                {
+                    RankScopeCombo.SelectedIndex = i;
+                    break;
+                }
             }
         }
+
         MainTabControl.SelectedIndex = 1;
         LoadRanking_Click(sender, e);
     }
@@ -496,8 +545,15 @@ public partial class MainWindow : Window
 
     private async Task SaveNewWord(WordUpsertRequest req)
     {
-        try { await _api.AddWordAsync(req); SearchWords_Click(this, new RoutedEventArgs()); }
-        catch (Exception ex) { MessageBox.Show($"Add error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+        try
+        {
+            await _api.AddWordAsync(req);
+            SearchWords_Click(this, new RoutedEventArgs());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Add error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void EditWord_Click(object sender, RoutedEventArgs e)
@@ -511,8 +567,15 @@ public partial class MainWindow : Window
 
     private async Task UpdateWord(Guid wordId, WordUpsertRequest req)
     {
-        try { await _api.UpdateWordAsync(wordId, req); SearchWords_Click(this, new RoutedEventArgs()); }
-        catch (Exception ex) { MessageBox.Show($"Update error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+        try
+        {
+            await _api.UpdateWordAsync(wordId, req);
+            SearchWords_Click(this, new RoutedEventArgs());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Update error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void DeleteWord_Click(object sender, RoutedEventArgs e)
@@ -521,14 +584,23 @@ public partial class MainWindow : Window
         {
             if (MessageBox.Show($"Delete \"{row.Word}\"?", "Confirm",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
                 _ = DeleteWord(row.Source.WordId);
+            }
         }
     }
 
     private async Task DeleteWord(Guid wordId)
     {
-        try { await _api.DeleteWordAsync(wordId); SearchWords_Click(this, new RoutedEventArgs()); }
-        catch (Exception ex) { MessageBox.Show($"Delete error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+        try
+        {
+            await _api.DeleteWordAsync(wordId);
+            SearchWords_Click(this, new RoutedEventArgs());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Delete error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
