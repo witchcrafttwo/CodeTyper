@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CodeTyper.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4a2998c4735a018232f5270d7d80de645dd237bb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+22661b44601655a32bb7dcf272c88f14aed280c6")]
 [assembly: System.Reflection.AssemblyProductAttribute("CodeTyper.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CodeTyper.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
