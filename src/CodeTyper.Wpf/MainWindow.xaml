@@ -329,28 +329,37 @@
                 </Border>
 
                 <!-- Current Word Display -->
-                <Border Background="#0f1117" BorderBrush="#6366f1" BorderThickness="2"
+                <Border x:Name="WordDisplayCard"
+                        Background="#0f1117" BorderBrush="#6366f1" BorderThickness="2"
                         CornerRadius="10" Padding="24,20" Margin="0,0,0,16"
-                        HorizontalAlignment="Center" MinWidth="400">
-                  <StackPanel HorizontalAlignment="Center">
+                        HorizontalAlignment="Stretch" MinWidth="400">
+                  <StackPanel HorizontalAlignment="Stretch">
                     <TextBlock Text="Type this word:" Foreground="#8892a4" FontSize="11"
                                HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                    <TextBlock x:Name="CurrentWordText" Text="---"
-                               FontFamily="Cascadia Code, Consolas, monospace"
-                               FontSize="36" FontWeight="Bold" Foreground="#e2e8f0"
-                               HorizontalAlignment="Center"/>
+                    <ScrollViewer x:Name="CurrentWordScrollViewer"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  Height="48">
+                      <TextBlock x:Name="CurrentWordText" Text="---"
+                                 FontFamily="Cascadia Code, Consolas, monospace"
+                                 FontSize="36" FontWeight="Bold" Foreground="#e2e8f0"
+                                 TextWrapping="NoWrap"/>
+                    </ScrollViewer>
                     <!-- 次の単語プレビュー -->
                     <TextBlock x:Name="NextWordText" Text=""
                                FontFamily="Cascadia Code, Consolas, monospace"
                                FontSize="14" Foreground="#4a5568"
-                               HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                               HorizontalAlignment="Stretch"
+                               TextAlignment="Left"
+                               TextTrimming="CharacterEllipsis"
+                               Margin="0,8,0,0"/>
                   </StackPanel>
                 </Border>
 
                 <!-- Input -->
                 <TextBox x:Name="InputBox"
                          FontFamily="Cascadia Code, Consolas, monospace"
-                         FontSize="20" Height="52" TextAlignment="Center"
+                         FontSize="20" Height="52" TextAlignment="Left"
                          IsEnabled="False" TextChanged="InputBox_TextChanged"
                          KeyDown="InputBox_KeyDown"
                          Margin="0,0,0,16"/>

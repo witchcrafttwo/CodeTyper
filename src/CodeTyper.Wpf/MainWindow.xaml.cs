@@ -196,6 +196,7 @@ public partial class MainWindow : Window
         _isAdvancingWord = false;
         CurrentWordText.Text = _words[_currentIndex].Word;
         CurrentWordText.Foreground = new SolidColorBrush(Color.FromRgb(0xe2, 0xe8, 0xf0));
+        CurrentWordScrollViewer.ScrollToHorizontalOffset(0);
 
         NextWordText.Text = _currentIndex + 1 < _words.Count
             ? $"Next: {_words[_currentIndex + 1].Word}"
@@ -229,6 +230,7 @@ public partial class MainWindow : Window
             ? new SolidColorBrush(Color.FromRgb(0x3b, 0x1a, 0x1a))
             : new SolidColorBrush(Color.FromRgb(0x25, 0x28, 0x36));
 
+        ScrollCurrentWordToInput(input.Length, target.Length);
         UpdateLiveStats();
 
         if (input.Length >= target.Length)
@@ -665,6 +667,15 @@ public partial class MainWindow : Window
     // ── Helpers ───────────────────────────────────────────────────────────────
     private static string? GetTag(ComboBox combo) =>
         (combo.SelectedItem as ComboBoxItem)?.Tag?.ToString();
+
+    private void ScrollCurrentWordToInput(int inputLength, int targetLength)
+    {
+        if (targetLength <= 0 || CurrentWordScrollViewer.ScrollableWidth <= 0)
+            return;
+
+        var progress = Math.Clamp((double)inputLength / targetLength, 0, 1);
+        CurrentWordScrollViewer.ScrollToHorizontalOffset(CurrentWordScrollViewer.ScrollableWidth * progress);
+    }
 
     private void HomeBtn_Click(object sender, RoutedEventArgs e)
     {
